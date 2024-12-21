@@ -120,8 +120,12 @@ end
 @constraint(model,-plmax<=pl56<=plmax)
 @constraint(model,-plmax<=pl36<=plmax)
 
-
+t = time()
 optimize!(model)
+tijd = time()-t
+
+println("time:", tijd)
+println("------------")
 println("f12: ", value(f12))
 println("f24: ", value(f24))
 println("f25: ", value(f25))
