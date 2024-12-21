@@ -1,0 +1,154 @@
+using HiGHS, JuMP
+
+model = Model(HiGHS.Optimizer)
+
+e = 256
+
+plmax1 = 200
+plmax = 100
+
+e4 = 0.4*e
+e3 = 0.2*e
+e5 = 0.4*e
+
+omzet2 = 0.007876 #1kcf/h = 0.007876 m³/s
+g1 = 0
+g2 = 3000*omzet2
+g3 = 1500*omzet2
+
+S = 36.6 #MJ/m³
+eff_fur = 0.95
+eff_CHP_h = 0.25
+eff_CHP_e = 0.4
+
+gmin4 = 1500*omzet2
+gmin6 = 2000*omzet2
+gmax4 = 5000*omzet2
+gmax6 = 6000*omzet2
+
+h2 = 340.9455
+h6 = 169.2664
+
+pgmin1 = 100
+pgmax1 = 220
+
+a = 13.603
+b = 13.626
+c = 13.65
+d = 13.674
+x1max = 30
+x2max = 30
+x3max = 30
+x4max = 30
+
+@variable(model, g4)
+@variable(model, g6)
+@variable(model, f12)
+@variable(model, f25)
+@variable(model, f24)
+@variable(model, f56)
+@variable(model, f53)
+@variable(model, S_fur2 >=0)
+@variable(model, S_chp2 >=0)
+@variable(model, S_fur3 >=0)
+@variable(model, S_chp3 >=0)
+@variable(model, G1)
+@variable(model, L2)
+@variable(model, L3)
+@variable(model, pl24)
+@variable(model, pl14)
+@variable(model, pl12)
+@variable(model, pl45)
+@variable(model, pl56)
+@variable(model, pl36)
+@variable(model, pl23)
+
+@variable(model, x1)
+@variable(model, x2)
+@variable(model, x3)
+@variable(model, x4)
+@variable(model, u1,Bin)
+@variable(model, u2,Bin)
+@variable(model, u3,Bin)
+@variable(model, u4,Bin)
+
+function cost(x1,x2,x3,x4)
+    return a*x1+b*x2+c*x3+d*x4 + 1531.91
+end
+
+@objective(model, Min, 6.2345*cost(x1,x2,x3,x4)+g4+g6)
+
+@constraint(model, G1-100==x1+x2+x3+x4)
+@constraint(model,x1<=u1*x1max)
+@constraint(model,x2<=u2*x2max)
+@constraint(model,x3<=u3*x3max)
+@constraint(model,x4<=u4*x4max)
+
+
+@constraint(model,S_fur2*eff_fur*S +S_chp2*eff_CHP_h*S== h2)
+@constraint(model,S_fur3*eff_fur*S +S_chp3*eff_CHP_h*S== h6)
+@constraint(model,S_chp2*eff_CHP_e*S == L2 )
+@constraint(model,S_chp3*eff_CHP_e*S == L3 )
+
+@constraint(model, G1 == pl12+pl14)
+@constraint(model, pl12 + L2 == pl24 + pl23)
+@constraint(model, pl14 + pl24 == e4 +pl45)
+@constraint(model, pl45 == pl56 + e5)
+@constraint(model, pl23 == e3 + pl36)
+@constraint(model, pl56 + L3 + pl36 == 0)
+
+
+@constraint(model, f12 == g1)
+@constraint(model, f24+ g4==0)
+@constraint(model, f12 ==g2+f25+f24+S_fur2+S_chp2)
+@constraint(model, f25==f56+f53)
+@constraint(model, f53==g3+S_fur3+S_chp3)
+@constraint(model, f56+g6 == 0)
+
+@constraint(model,gmin4<=g4<=gmax4)
+@constraint(model,gmin6<=g6<=gmax6)
+#@constraint(model,0<=G1)
+@constraint(model, 10<=L2<=100)
+@constraint(model, 10<=L3<=20)
+@constraint(model,pgmin1<=G1<=pgmax1)
+
+@constraint(model,-plmax1<=pl12<=plmax1)
+@constraint(model,-plmax<=pl14<=plmax)
+@constraint(model,-plmax<=pl24<=plmax)
+@constraint(model,-plmax<=pl23<=plmax)
+@constraint(model,-plmax<=pl45<=plmax)
+@constraint(model,-plmax<=pl56<=plmax)
+@constraint(model,-plmax<=pl36<=plmax)
+
+
+optimize!(model)
+println("f12: ", value(f12))
+println("f24: ", value(f24))
+println("f25: ", value(f25))
+println("f56: ", value(f56))
+println("f53: ", value(f53))
+println("--------------")
+println("g1: ",value(g1))
+println("g2: ",value(g2))
+println("g3: ",value(g3))
+println("g4: ",value(g4))
+println("g6: ",value(g6))
+println("G1: ", value(G1))
+println("-------------------")
+println("S_fur2: ", value(S_fur2))
+println("S_fur3: ", value(S_fur3))
+println("S_chp2: ", value(S_chp2))
+println("S_chp3: ", value(S_chp3))
+println("------------------")
+println("L2:", value(L2))
+println("L3:", value(L3))
+println("------------------")
+println("pl12,:", value(pl12))
+println("pl14,:", value(pl14))
+println("pl24,:", value(pl24))
+println("pl45,:", value(pl45))
+println("pl56,:", value(pl56))
+println("pl36,:", value(pl36))
+println("pl23,:", value(pl23))
+println("------------------")
+println(objective_value(model))
